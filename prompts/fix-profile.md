@@ -1,0 +1,4 @@
+Failure: In @P4/tests/profile-follow/follow.spec.ts (line 40) and @P4/tests/profile-follow/unfollow.spec.ts (line 47), the toEqual check of GET /api/profiles/:username fails with no fault on: the answer has an extra "email" field that API.md's Profile does not have.
+My decision: The second way. I'll move the exact profile check (toEqual with exactly username, bio, image, following) into its own small test marked with test.fail() and a comment naming the email leak. The follow tests then check only the follow part, for example (await response.json()).profile.following toBe(true) or false. That way a broken follow button still turns them red, the leak stays visible as one known bug, and when the app stops sending email, the small test turns red to tell us the fix landed.
+Material: @P4/API.md @P4/tests/api.spec.ts (line 82 shows how this suite marks a known bug with test.fail()).
+Rules: Make only this change. Do not read the app's code in P4/app. Do not run the tests.
