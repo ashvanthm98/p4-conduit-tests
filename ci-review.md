@@ -48,23 +48,30 @@ My own rule gave Claude Node.js 24, `npm ci` and Chromium only, so my workflow a
   - Lines 30–36: "Keep the HTML report" saves the playwright-report/ folder as a download called playwright-report and keeps it for 30 days. Line 31's if: !cancelled() makes this step run even when tests fail (only not when the run is cancelled), so the report is there exactly when we need it most.
 
 ## 5. The first run on GitHub
-- **Run:** Add the CI workflow · **Result:** … · **Tests:** …
-- **The report (artifact):** …
+- **Run:** Add the CI workflow · **Result:** green tick · **Tests:** 23 passed (the same as my laptop)
+- **The report (artifact):** yes, playwright-report is under Artifacts
 
 ## 6. A red run on purpose
 - **The change:** `tests/example.spec.ts` line 6, `toBe(200)` → `toBe(201)`
-- **My prediction:** …
-- **What GitHub showed:** …
+- **My prediction:** The step "Run the Playwright tests" turns red. In example.spec.ts, line 6 expects status 201, but GET /api/tags only reads data, so the app answers 200. Expected: 201, Received: 200. The test stops there, so line 8 never runs. The other 22 tests still pass, the job gets a red cross, and the step "Keep the HTML report" still runs because of if: !cancelled(), so the report is there to download.
+- **What GitHub showed:** The failed step "Run the Playwright tests" shows "the API lists the popular tags" failing at example.spec.ts line 6: Expected 201, Received 200. 1 failed, 22 passed, and "Keep the HTML report" still ran, so the report is ready to download. My prediction was right.
 
 ## 7. Fixed, and green again
-- **The fix:** line 6 back to `toBe(200)` · **Run:** Fix the expected status · **Result:** …
+- **The fix:** line 6 back to `toBe(200)` · **Run:** Fix the expected status · **Result:** green, 23 passed
 
 ## 8. Review notes for my other AI-written tests (written while CI ran)
 The API checklist: status · body · shape · negative cases (a refused request changes nothing) · own test data.
 Monday's and Tuesday's tests that I did not review in depth on those days. Each one: kept, changed or removed, and why.
 
 ### Monday: `tests/api.spec.ts`
-- …
+- "read: GET by slug returns 200 with the same article that was created": **kept**, because it checks 200 and the whole article with toEqual, the same createdAt as the create answer, and its own user.
+- "delete: the author deletes the article, gets 204 with no body, and the article is gone": **kept**, because it checks 204 with an empty body, then reads the article again and gets 404 "not found", so the delete really happened.
+- "create without a token gives 401 "token is missing"": **changed**, because 401 and the exact error are right, but it never reads the data again. Give the article a unique title, then GET /api/articles and check no article has that title, so the refused create saved nothing.
+- "create with a wrong token gives 401 "token is invalid"": **changed**, because the same as 3. Add the read-back with a unique title, so the wrong token really saved nothing.
+- "update by a user who is not the author gives 403 "article forbidden" and the article does not change": **kept**, because 403 with the exact error, and it reads the article again and finds it unchanged. That's the full negative case.
+- "delete an article that was already deleted gives 404 "article not found"": **kept**, because the first delete gives 204 and the second gives 404 with the exact error. There's no data left to change, and test 2 already checks that a deleted article is gone.
 
 ### Tuesday: `tests/contract.spec.ts`
-- …
+- "GET /api/user answers with the User shape from API.md": **kept**, because it checks 200, exact values, the token's type, and exact key lists for the answer and the user (shape), with its own user. That's the full contract check.
+- "GET /api/user without a token gives 401 "is missing"": **kept**, because 401 with the exact error, its own user, and a read-back with the right token. A GET doesn't change data, so the read-back mostly proves the user still works. toMatchObject is fine there, because test 1 already checks the exact shape.
+- "GET /api/user with a wrong token gives 401 "is invalid"": **kept**, because the same as 2, for a wrong token. 401 with the exact "is invalid" error is a different case from a missing token, so it's not a repeat.
